@@ -1,0 +1,4 @@
+export const TTL_CONFIG = {
+  FILE_CLEANUP_SECONDS: 10 * 60,
+  DOWNLOAD_LINK_SECONDS: 15 * 60,
+};

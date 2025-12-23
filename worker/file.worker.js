@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import redisClient from "../redis/client.js";
 import { File } from "../repo/models/file.js";
+import { TTL_CONFIG } from "../config/ttl.config.js";
 
 await redisClient.connect();
 console.log("Worker Redis connected");
@@ -35,7 +36,7 @@ new Worker(
       );
       await redisClient.setEx(
         `file:cleanup:${storedName}`,
-        300,
+        TTL_CONFIG.FILE_CLEANUP_SECONDS,
         JSON.stringify({ storedName })
       );
 

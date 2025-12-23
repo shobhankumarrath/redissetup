@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { createClient } from "redis";
 import path from "path";
 import fs from "fs";
+import { TTL_CONFIG } from "../config/ttl.config.js";
 
 const router = express.Router();
 const redisClient = createClient({
@@ -24,7 +25,11 @@ router.post("/generate-download", async (req, res) => {
 
   //TTL = 5 minutes
 
-  await redisClient.setEx(redisKey, 300, JSON.stringify({ storedName }));
+  await redisClient.setEx(
+    redisKey,
+    TTL_CONFIG.DOWNLOAD_LINK_SECONDS,
+    JSON.stringify({ storedName })
+  );
   const BASE_URL = process.env.BASE_URL;
   res.json({
     downloadUrl: `${BASE_URL}/api/download/${token}`,
