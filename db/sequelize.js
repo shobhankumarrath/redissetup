@@ -9,4 +9,5 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
       rejectUnauthorized: false, // IMPORTANT
     },
   },
+  ssl: true,
 });
