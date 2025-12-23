@@ -14,7 +14,6 @@ new Worker(
   "filequeue",
   async (job) => {
     try {
-      console.log("Raw job data:", job.data);
       const { path: filePath, originalName, storedName } = job.data;
       console.log("Processing:", originalName);
 
@@ -36,7 +35,7 @@ new Worker(
       );
       await redisClient.setEx(
         `file:cleanup:${storedName}`,
-        30,
+        300,
         JSON.stringify({ storedName })
       );
 
@@ -49,9 +48,7 @@ new Worker(
   },
   {
     connection: {
-      host: "127.0.0.1",
-      port: 6379,
-      maxRetriesPerRequest: null,
+      url: process.env.REDIS_URL,
     },
   }
 );
