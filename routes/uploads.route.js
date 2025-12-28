@@ -23,12 +23,12 @@ router.post(
         await transaction.rollback();
         return res.status(400).json({ error: "No file uploaded" });
       }
-
       await File.create(
         {
           user_id: req.user.id,
           original_name: req.file.originalname,
           stored_name: req.file.filename,
+          mime_type: req.file.mimetype,
           status: "QUEUED",
         },
         { transaction }
@@ -38,6 +38,7 @@ router.post(
         path: req.file.path,
         originalName: req.file.originalname,
         storedName: req.file.filename,
+        mime_type: req.file.mimetype,
       });
 
       await transaction.commit();

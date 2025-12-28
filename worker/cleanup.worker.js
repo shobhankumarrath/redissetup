@@ -1,32 +1,29 @@
 import "../config/env.js";
-import fs from "fs";
-import path from "path";
-import { createClient } from "redis";
+import { Worker } from "bullmq";
+import { supabase } from "../lib/supabase.js";
 import { File } from "../repo/models/file.js";
 
-const redis = createClient();
-await redis.connect();
+new Worker(
+  "cleanupqueue",
+  async (job) => {
+    const { storedName } = job.data;
+    try {
+      console.log("Cleaning:", storedName);
+      await supabase.storage.from("uploads").remove([storedName]);
 
-console.log("Cleanup worker running..");
-
-await redis.configSet("notify-keyspace-events", "Ex");
-
-const subscriber = redis.duplicate();
-await subscriber.connect();
-
-subscriber.subscribe("__keyevent@0__:expired", async (key) => {
-  if (!key.startsWith("file:cleanup:")) return;
-
-  const storedName = key.replace("file:cleanup:", "");
-  const filePath = path.join(process.cwd(), "processed", storedName);
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    console.log("Auto-deleted File", storedName);
+      await File.update(
+        { status: "Deleted" },
+        { where: { stored_name: storedName } }
+      );
+      console.log("Cleaned", storedName);
+    } catch (error) {
+      console.error("❌ Cleanup failed:", error);
+      throw error;
+    }
+  },
+  {
+    connection: {
+      url: process.env.REDIS_URL,
+    },
   }
-
-  await File.update(
-    { status: "deleted" },
-    { where: { stored_name: storedName } }
-  );
-});
+);

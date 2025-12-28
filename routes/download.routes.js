@@ -1,59 +1,57 @@
 import express from "express";
 import crypto from "crypto";
-import { createClient } from "redis";
-import path from "path";
-import fs from "fs";
-import { TTL_CONFIG } from "../config/ttl.config.js";
+import redisClient from "../redis/client.js";
+import { File } from "../repo/models/file.js";
+import { supabase } from "../lib/supabase.js";
 
 const router = express.Router();
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-});
 
-await redisClient.connect();
-
-//Generate secure download link
-
+//Generate link api
 router.post("/generate-download", async (req, res) => {
   const { storedName } = req.body;
 
-  if (!storedName) {
-    return res.status(400).json({ error: "storedName is required" });
-  }
   const token = crypto.randomUUID();
-  const redisKey = `download:${token}`;
-
-  //TTL = 5 minutes
-
   await redisClient.setEx(
-    redisKey,
-    TTL_CONFIG.DOWNLOAD_LINK_SECONDS,
+    `download:${token}`,
+    200,
     JSON.stringify({ storedName })
   );
-  const BASE_URL = process.env.BASE_URL;
   res.json({
-    downloadUrl: `${BASE_URL}/api/download/${token}`,
-    expiresIn: "5 minutes",
+    downloadUrl: `${process.env.BASR_URL}/api/download/${token}`,
+    expires: "In 3 minutes",
   });
 });
 
-//Download file using token
 router.get("/download/:token", async (req, res) => {
-  const { token } = req.params;
-
-  const data = await redisClient.get(`download:${token}`);
+  const data = await redisClient.get(`download:${req.params.token}`);
   if (!data) {
-    return res.status(410).json({ error: "Link expired or invalid" });
+    return res.status(410).json({ error: "Link Expired" });
   }
+
   const { storedName } = JSON.parse(data);
-  const filePath = path.join(process.cwd(), "processed", storedName);
-  console.log(filePath);
 
-  if (fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "File not found" });
+  const fileRecord = await File.findOne({
+    where: { stored_name: storedName },
+  });
+
+  if (!fileRecord) {
+    return res.status(404).json({ error: "Metadata missing" });
   }
 
-  res.download(filePath);
+  const { data: file, error } = await supabase.storage
+    .from("uploads")
+    .download(storedName);
+
+  if (error || !file) {
+    return res.status(404).json({ error: "File not found in storage" });
+  }
+
+  res.set({
+    "Content-Disposition": `attachment; filename="${fileRecord.original_name}"`,
+    "Content-Type": fileRecord.mime_type,
+  });
+
+  res.send(Buffer.from(await file.arrayBuffer()));
 });
 
 export default router;

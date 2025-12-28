@@ -21,6 +21,7 @@
     "worker:cleanup": "node worker/cleanup.worker.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
     "bullmq": "^5.66.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
