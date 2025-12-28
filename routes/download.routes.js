@@ -17,7 +17,7 @@ router.post("/generate-download", async (req, res) => {
     JSON.stringify({ storedName })
   );
   res.json({
-    downloadUrl: `${process.env.BASR_URL}/api/download/${token}`,
+    downloadUrl: `${process.env.BASE_URL}/api/download/${token}`,
     expires: "In 3 minutes",
   });
 });
